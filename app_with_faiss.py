@@ -271,3 +271,59 @@ def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mt
         }
     except Exception as e:
         return {"error": str(e), "video_path": video_path, "detections": []}
+  st.markdown("---")
+        st.subheader("Top Detections (by confidence)")
+        sorted_dets = sorted(all_detections, key=lambda x: x['confidence'], reverse=True)
+        for i, d in enumerate(sorted_dets[:10]):
+            with st.expander(f"#{i+1} • {Path(d['video_path']).name} • Time {int(d['timestamp']//60)}:{int(d['timestamp']%60):02d} • {d['confidence']*100:.1f}%"):
+                c1, c2 = st.columns([1,2])
+                with c1:
+                    st.image(d['face_image'], caption="Detected Face", use_column_width=True)
+                    st.metric("Frame", f"{d['frame_number']:,}")
+                    st.metric("Confidence", f"{d['confidence']*100:.1f}%")
+                with c2:
+                    st.image(d['annotated_frame'], caption="Annotated Frame (RGB)", use_column_width=True)
+
+        st.markdown("---")
+        st.subheader("Export Report")
+                report = {
+            "processing_date": datetime.now().isoformat(),
+            "total_videos": total_videos,
+            "total_detections": len(all_detections),
+            "avg_confidence": float(avg_conf),
+            "detections": [
+                {
+                    "video": Path(d['video_path']).name,
+                    "frame": int(d['frame_number']),
+                    "time_s": float(d['timestamp']),
+                    "confidence": float(d['confidence'])
+                } 
+                for d in sorted_dets
+            ]
+        }
+
+        st.download_button(
+            "Download JSON Report",
+            json.dumps(report, indent=2),
+            file_name=f"detection_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+            mime="application/json"
+        )
+
+        # Text report
+        text_report = f"DETECTION REPORT\nDate: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        text_report += f"Total Videos: {total_videos}\nTotal Detections: {len(all_detections)}\n\nTOP MATCHES:\n"
+        for i, d in enumerate(sorted_dets[:20]):
+            text_report += (
+                f"{i+1}. {Path(d['video_path']).name} | Frame {d['frame_number']} | "
+                f"Time {int(d['timestamp']//60)}:{int(d['timestamp']%60):02d} | "
+                f"{d['confidence']*100:.1f}%\n"
+            )
+
+        st.download_button(
+            "Download Text Report",
+            text_report,
+            file_name=f"detection_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+            mime="text/plain"
+        )
+
+    st.balloons()
