@@ -554,7 +554,7 @@ if ref_image_file and video_files:
     with col1:
         st.subheader("📸 Reference Image")
         ref_img = Image.open(ref_image_file).convert("RGB")
-        st.image(ref_img, use_column_width=True)
+        st.image(ref_img, use_container_width=True)
         
         with st.spinner("Extracting reference face..."):
             ref_boxes, ref_probs = mtcnn.detect(ref_img)
@@ -854,13 +854,13 @@ if ref_image_file and video_files:
                     col1, col2 = st.columns([1, 2])
                     
                     with col1:
-                        st.image(det['face_image'], caption="Detected Face", use_column_width=True)
+                        st.image(det['face_image'], caption="Detected Face", use_container_width=True)
                         st.metric("Frame", f"{det['frame_number']:,}")
                         st.metric("Confidence", f"{det['confidence']*100:.1f}%")
                         st.metric("Timestamp", f"{int(det['timestamp']//60)}:{int(det['timestamp']%60):02d}")
                     
                     with col2:
-                        st.image(det['annotated_frame'], caption="Full Frame", use_column_width=True)
+                        st.image(det['annotated_frame'], caption="Full Frame", use_container_width=True)
             
             if len(filtered_detections) > 20:
                 st.info(f"📊 Showing top 20 detections. Total filtered: {len(filtered_detections)}")
