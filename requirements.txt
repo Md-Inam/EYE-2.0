@@ -1,1 +1,10 @@
+streamlit
+fastapi
+uvicorn
+opencv-python
+face-recognition
+faiss-cpu
+numpy
+Pillow
+python-multipart
 
