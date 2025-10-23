@@ -14,8 +14,6 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
 import glob
-import tempfile
-import traceback
 
 # ---------------- FAISS import with fallback ----------------
 try:
@@ -25,9 +23,7 @@ except Exception:
     faiss = None
     _FAISS_AVAILABLE = False
 
-# =====================================================================
-# PAGE CONFIG
-# =====================================================================
+# ---------------- PAGE CONFIG ----------------
 st.set_page_config(
     page_title="Enterprise Missing Person Detection (FAISS)",
     page_icon="🔍",
@@ -38,19 +34,13 @@ st.set_page_config(
 st.title("🔍 Enterprise Missing Person Detection — FAISS edition")
 st.caption("FAISS (or fallback) for fast vector search. Upload reference image, point to footage folder, hit Process.")
 
-# =====================================================================
-# SESSION STATE
-# =====================================================================
+# ---------------- SESSION STATE ----------------
 if 'detections' not in st.session_state:
     st.session_state.detections = []
 if 'is_processing' not in st.session_state:
     st.session_state.is_processing = False
-if 'video_files' not in st.session_state:
-    st.session_state.video_files = []
 
-# =====================================================================
-# MODEL LOADING
-# =====================================================================
+# ---------------- MODEL LOADING ----------------
 @st.cache_resource
 def load_models():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -74,9 +64,7 @@ def load_models():
         st.error(f"Error loading models: {e}")
         return None, None, None, False
 
-# =====================================================================
-# EMBEDDING & FAISS UTILITIES
-# =====================================================================
+# ---------------- EMBEDDING & FAISS UTILITIES ----------------
 def normalize_vectors(x: np.ndarray, eps=1e-10):
     norms = np.linalg.norm(x, axis=1, keepdims=True)
     return x / (norms + eps)
@@ -89,8 +77,8 @@ def get_face_embedding_batch(images_list, resnet, device):
         for img in images_list:
             img_resized = img.resize((160, 160))
             img_array = np.array(img_resized).astype(np.float32)
-            img_tensor = torch.tensor(img_array).permute(2, 0, 1).float()
-            img_tensor = (img_tensor - 127.5) / 128.0
+            img_tensor = torch.tensor(img_array).permute(2,0,1).float()
+            img_tensor = (img_tensor - 127.5)/128.0
             tensors.append(img_tensor)
         batch = torch.stack(tensors).to(device)
         if device.type == 'cuda':
@@ -124,44 +112,40 @@ def batch_cosine_similarity(embs: np.ndarray, refs_norm: np.ndarray):
     embs_norm = normalize_vectors(embs.copy())
     return np.dot(embs_norm, refs_norm.T)
 
-# =====================================================================
-# MOTION DETECTION & DRAWING
-# =====================================================================
+# ---------------- MOTION DETECTION & DRAW ----------------
 def detect_motion(frame1, frame2, threshold=25):
     if frame1 is None or frame2 is None:
         return True
     diff = cv2.absdiff(frame1, frame2)
     gray = cv2.cvtColor(diff, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
     _, thresh = cv2.threshold(blur, threshold, 255, cv2.THRESH_BINARY)
     motion_pixels = np.sum(thresh > 0)
-    total_pixels = thresh.shape[0] * thresh.shape[1]
-    return (motion_pixels / total_pixels) > 0.005
+    total_pixels = thresh.shape[0]*thresh.shape[1]
+    return (motion_pixels/total_pixels) > 0.005
 
 def draw_box(frame, bbox, confidence, label="Match"):
     x1, y1, x2, y2 = map(int, bbox)
     if confidence >= 0.8:
-        color = (0, 255, 0)
+        color = (0,255,0)
     elif confidence >= 0.6:
-        color = (255, 165, 0)
+        color = (255,165,0)
     else:
-        color = (255, 0, 0)
-    cv2.rectangle(frame, (x1, y1), (x2, y2), color, 3)
+        color = (255,0,0)
+    cv2.rectangle(frame, (x1,y1), (x2,y2), color, 3)
     text = f"{label} {confidence*100:.1f}%"
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = 0.7
     thickness = 2
     (text_w, text_h), _ = cv2.getTextSize(text, font, font_scale, thickness)
-    cv2.rectangle(frame, (x1, y1 - text_h - 10), (x1 + text_w, y1), color, -1)
-    cv2.putText(frame, text, (x1, y1 - 5), font, font_scale, (255, 255, 255), thickness)
+    cv2.rectangle(frame, (x1, y1 - text_h - 10), (x1+text_w, y1), color, -1)
+    cv2.putText(frame, text, (x1, y1-5), font, font_scale, (255,255,255), thickness)
     return frame
 
-# =====================================================================
-# VIDEO PROCESSING
-# =====================================================================
-def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mtcnn, device, 
-                        confidence_threshold, sample_rate, min_face_size,
-                        use_motion_detection, progress_callback=None, batch_size=16):
+# ---------------- VIDEO PROCESSING ----------------
+def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mtcnn, device,
+                         confidence_threshold, sample_rate, min_face_size, use_motion_detection,
+                         progress_callback=None, batch_size=16):
     detections = []
     try:
         cap = cv2.VideoCapture(video_path)
@@ -221,15 +205,15 @@ def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mt
                             embs_norm = normalize_vectors(embeddings.copy())
                             if _FAISS_AVAILABLE and faiss_index is not None:
                                 D, I = faiss_index.search(embs_norm.astype(np.float32), 1)
-                                sims = D[:, 0]
-                                ids = I[:, 0]
+                                sims = D[:,0]
+                                ids = I[:,0]
                             else:
                                 sims_all = batch_cosine_similarity(embeddings, refs_norm)
                                 ids = np.argmax(sims_all, axis=1)
                                 sims = sims_all[np.arange(sims_all.shape[0]), ids]
                             for sim, id_, meta in zip(sims, ids, face_metadata[:len(sims)]):
                                 if sim >= confidence_threshold:
-                                    timestamp = meta['frame_number'] / fps
+                                    timestamp = meta['frame_number']/fps
                                     annotated_frame = meta['frame_bgr'].copy()
                                     annotated_frame = draw_box(annotated_frame, meta['bbox'], float(sim))
                                     detections.append({
@@ -246,6 +230,8 @@ def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mt
                         face_metadata = []
             processed_count += 1
             frame_count += 1
+            if progress_callback and frame_count % 50 == 0:
+                progress_callback(frame_count, total_frames, len(detections))
         # leftover batch
         if face_batch:
             embeddings = get_face_embedding_batch(face_batch, resnet, device)
@@ -253,15 +239,15 @@ def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mt
                 embs_norm = normalize_vectors(embeddings.copy())
                 if _FAISS_AVAILABLE and faiss_index is not None:
                     D, I = faiss_index.search(embs_norm.astype(np.float32), 1)
-                    sims = D[:, 0]
-                    ids = I[:, 0]
+                    sims = D[:,0]
+                    ids = I[:,0]
                 else:
                     sims_all = batch_cosine_similarity(embeddings, refs_norm)
                     ids = np.argmax(sims_all, axis=1)
                     sims = sims_all[np.arange(sims_all.shape[0]), ids]
                 for sim, id_, meta in zip(sims, ids, face_metadata):
                     if sim >= confidence_threshold:
-                        timestamp = meta['frame_number'] / fps
+                        timestamp = meta['frame_number']/fps
                         annotated_frame = meta['frame_bgr'].copy()
                         annotated_frame = draw_box(annotated_frame, meta['bbox'], float(sim))
                         detections.append({
@@ -270,4 +256,18 @@ def process_single_video(video_path, faiss_index, refs_norm, ref_ids, resnet, mt
                             'timestamp': timestamp,
                             'confidence': float(sim),
                             'bbox': meta['bbox'],
-                            'face_image': meta['
+                            'face_image': meta['face_pil'],
+                            'annotated_frame': cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB),
+                            'matched_ref_id': ref_ids[id_] if ref_ids is not None else None
+                        })
+        cap.release()
+        return {
+            'video_path': video_path,
+            'detections': detections,
+            'total_frames': total_frames,
+            'processed_frames': processed_count,
+            'skipped_motion': skipped_motion,
+            'fps': fps
+        }
+    except Exception as e:
+        return {"error": str(e), "video_path": video_path, "detections": []}
