@@ -581,7 +581,7 @@ if ref_image_file and video_files:
             st.success(f"✅ Reference encoded ({ref_probs[best_idx]*100:.1f}%)")
             
             with st.expander("View Detected Face"):
-                st.image(ref_face, caption="Extracted Face", use_container_width=True)
+                st.image(ref_face, caption="Extracted Face", width=200)
     
     with col2:
         st.subheader("📹 Video Queue")
@@ -774,7 +774,7 @@ if ref_image_file and video_files:
                 color_continuous_scale='Viridis',
                 height=400
             )
-            fig2.update_xaxis(tickangle=-45)
+            fig2.update_xaxes(tickangle=-45)
             st.plotly_chart(fig2, use_container_width=True)
             
             # Confidence distribution
