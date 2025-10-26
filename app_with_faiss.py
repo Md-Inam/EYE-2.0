@@ -581,7 +581,7 @@ if ref_image_file and video_files:
             st.success(f"✅ Reference encoded ({ref_probs[best_idx]*100:.1f}%)")
             
             with st.expander("View Detected Face"):
-                st.image(ref_face, caption="Extracted Face", width=200)
+                st.image(ref_face, caption="Extracted Face", use_container_width=True)
     
     with col2:
         st.subheader("📹 Video Queue")
