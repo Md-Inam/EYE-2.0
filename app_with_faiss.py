@@ -554,7 +554,7 @@ if ref_image_file and video_files:
     with col1:
         st.subheader("📸 Reference Image")
         ref_img = Image.open(ref_image_file).convert("RGB")
-        st.image(ref_img, width='stretch')
+        st.image(ref_img, use_column_width=True)
         
         with st.spinner("Extracting reference face..."):
             ref_boxes, ref_probs = mtcnn.detect(ref_img)
@@ -602,7 +602,7 @@ if ref_image_file and video_files:
     st.markdown("---")
     
     # Start processing button
-    if st.button("🚀 Start Batch Processing", type="primary", width='stretch'):
+    if st.button("🚀 Start Batch Processing", type="primary", use_container_width=True):
         
         start_time = time.time()
         all_detections = []
@@ -756,7 +756,7 @@ if ref_image_file and video_files:
                 title='All Detections Across Videos',
                 height=500
             )
-            st.plotly_chart(fig, width='stretch')
+            st.plotly_chart(fig, use_container_width=True)
             
             # Video-wise breakdown
             st.markdown("---")
@@ -775,7 +775,7 @@ if ref_image_file and video_files:
                 height=400
             )
             fig2.update_xaxis(tickangle=-45)
-            st.plotly_chart(fig2, width='stretch')
+            st.plotly_chart(fig2, use_container_width=True)
             
             # Confidence distribution
             col1, col2 = st.columns(2)
@@ -788,7 +788,7 @@ if ref_image_file and video_files:
                     title='Confidence Distribution',
                     color_discrete_sequence=['#667eea']
                 )
-                st.plotly_chart(fig3, width='stretch')
+                st.plotly_chart(fig3, use_container_width=True)
             
             with col2:
                 # High confidence matches
@@ -802,7 +802,7 @@ if ref_image_file and video_files:
                     marker=dict(colors=['#28a745', '#ffc107', '#dc3545'])
                 )])
                 fig4.update_layout(title='Confidence Categories')
-                st.plotly_chart(fig4, width='stretch')
+                st.plotly_chart(fig4, use_container_width=True)
             
             # Detection clips
             st.markdown("---")
@@ -854,13 +854,13 @@ if ref_image_file and video_files:
                     col1, col2 = st.columns([1, 2])
                     
                     with col1:
-                        st.image(det['face_image'], caption="Detected Face", width='stretch')
+                        st.image(det['face_image'], caption="Detected Face", use_column_width=True)
                         st.metric("Frame", f"{det['frame_number']:,}")
                         st.metric("Confidence", f"{det['confidence']*100:.1f}%")
                         st.metric("Timestamp", f"{int(det['timestamp']//60)}:{int(det['timestamp']%60):02d}")
                     
                     with col2:
-                        st.image(det['annotated_frame'], caption="Full Frame", width='stretch')
+                        st.image(det['annotated_frame'], caption="Full Frame", use_column_width=True)
             
             if len(filtered_detections) > 20:
                 st.info(f"📊 Showing top 20 detections. Total filtered: {len(filtered_detections)}")
@@ -903,7 +903,7 @@ if ref_image_file and video_files:
                     data=json.dumps(report, indent=2),
                     file_name=f"detection_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                     mime="application/json",
-                    width='stretch'
+                    use_container_width=True
                 )
             
             with col2:
@@ -923,7 +923,7 @@ if ref_image_file and video_files:
                     data=csv_data.to_csv(index=False),
                     file_name=f"detection_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                     mime="text/csv",
-                    width='stretch'
+                    use_container_width=True
                 )
             
             with col3:
@@ -963,7 +963,7 @@ TOP 20 DETECTIONS
                     data=text_report,
                     file_name=f"detection_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
                     mime="text/plain",
-                    width='stretch'
+                    use_container_width=True
                 )
         
         else:
@@ -1071,7 +1071,7 @@ else:
         'Speedup': ['600x', '600x', '600x']
     })
     
-    st.dataframe(perf_df, width='stretch', hide_index=True)
+    st.dataframe(perf_df, use_container_width=True, hide_index=True)
     
     st.success("💡 **Tip:** For best results, use GPU-enabled hardware and enable all optimizations!")
 
